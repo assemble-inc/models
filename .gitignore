@@ -95,3 +95,8 @@ ENV/
 .DS_Store
 
 samples/outreach/blogs/segmentation_blogpost/carvana-image-masking-challenge/
+
+# Alex
+/tutorials/rnn/ptb/trained_model/*
+!/tutorials/rnn/ptb/trained_model/.keep
+
