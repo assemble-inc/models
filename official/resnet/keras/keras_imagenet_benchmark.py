@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Executes Keras benchmarks and accuracy tests."""
-
-from __future__ import absolute_import
-from __future__ import division
 from __future__ import print_function
 
 import os
@@ -24,15 +21,15 @@ from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import cifar10_main as cifar_main
-from official.resnet.keras import keras_cifar_main
+from official.resnet import imagenet_main
 from official.resnet.keras import keras_common
+from official.resnet.keras import keras_imagenet_main
 
 
-DATA_DIR = '/data/cifar10_data/'
+DATA_DIR = '/data/imagenet/'
 
 
-class KerasCifar10BenchmarkTests(object):
+class KerasImagenetBenchmarkTests(object):
   """Benchmarks and accuracy tests for KerasCifar10."""
 
   local_flags = None
@@ -41,45 +38,16 @@ class KerasCifar10BenchmarkTests(object):
     self.oss_report_object = None
     self.output_dir = output_dir
 
-  def keras_resnet56_1_gpu(self):
-    """Test keras based model with Keras fit and distribution strategies."""
+  def keras_resnet50_8_gpu(self):
+    """Test Keras model with Keras fit/dist_strat and 8 GPUs."""
     self._setup()
-    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.num_gpus = 8
     flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
-    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.batch_size = 64*8
+    flags.FLAGS.train_epochs = 90
+    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet50_8_gpu')
     flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
-
-  def keras_resnet56_4_gpu(self):
-    """Test keras based model with Keras fit and distribution strategies."""
-    self._setup()
-    flags.FLAGS.num_gpus = 4
-    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_4_gpu')
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = ''
-    flags.FLAGS.resnet_size = 56
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
-
-  def keras_resnet56_no_dist_strat_1_gpu(self):
-    """Test keras based model with Keras fit but not distribution strategies."""
-    self._setup()
-    flags.FLAGS.turn_off_distribution_strategy = True
-    flags.FLAGS.num_gpus = 1
-    flags.FLAGS.data_dir = DATA_DIR
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir(
-        'keras_resnet56_no_dist_strat_1_gpu')
-    flags.FLAGS.resnet_size = 56
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
+    stats = keras_imagenet_main.run(flags.FLAGS)
     self._fill_report_object(stats)
 
   def _fill_report_object(self, stats):
@@ -96,12 +64,12 @@ class KerasCifar10BenchmarkTests(object):
   def _setup(self):
     """Setups up and resets flags before each test."""
     tf.logging.set_verbosity(tf.logging.DEBUG)
-    if KerasCifar10BenchmarkTests.local_flags is None:
+    if KerasImagenetBenchmarkTests.local_flags is None:
       keras_common.define_keras_flags()
-      cifar_main.define_cifar_flags()
-      # Loads flags to get defaults to then override.
+      imagenet_main.define_imagenet_flags()
+      # Loads flags to get defaults to then override. List cannot be empty.
       flags.FLAGS(['foo'])
       saved_flag_values = flagsaver.save_flag_values()
-      KerasCifar10BenchmarkTests.local_flags = saved_flag_values
+      KerasImagenetBenchmarkTests.local_flags = saved_flag_values
       return
-    flagsaver.restore_flag_values(KerasCifar10BenchmarkTests.local_flags)
+    flagsaver.restore_flag_values(KerasImagenetBenchmarkTests.local_flags)

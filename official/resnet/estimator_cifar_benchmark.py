@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Executes Keras benchmarks and accuracy tests."""
+"""Executes Estimator benchmarks and accuracy tests."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,15 +25,12 @@ from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.resnet import cifar10_main as cifar_main
-from official.resnet.keras import keras_cifar_main
-from official.resnet.keras import keras_common
-
 
 DATA_DIR = '/data/cifar10_data/'
 
 
-class KerasCifar10BenchmarkTests(object):
-  """Benchmarks and accuracy tests for KerasCifar10."""
+class EstimatorCifar10BenchmarkTests(object):
+  """Benchmarks and accuracy tests for Estimator ResNet56."""
 
   local_flags = None
 
@@ -41,52 +38,63 @@ class KerasCifar10BenchmarkTests(object):
     self.oss_report_object = None
     self.output_dir = output_dir
 
-  def keras_resnet56_1_gpu(self):
-    """Test keras based model with Keras fit and distribution strategies."""
+  def resnet56_1_gpu(self):
+    """Test layers model with Estimator and distribution strategies."""
     self._setup()
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir('keras_resnet56_1_gpu')
+    flags.FLAGS.model_dir = self._get_model_dir('resnet56_1_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
+    stats = cifar_main.run_cifar(flags.FLAGS)
     self._fill_report_object(stats)
 
-  def keras_resnet56_4_gpu(self):
-    """Test keras based model with Keras fit and distribution strategies."""
+  def resnet56_fp16_1_gpu(self):
+    """Test layers FP16 model with Estimator and distribution strategies."""
     self._setup()
-    flags.FLAGS.num_gpus = 4
-    flags.FLAGS.data_dir = self._get_model_dir('keras_resnet56_4_gpu')
-    flags.FLAGS.batch_size = 128
-    flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = ''
-    flags.FLAGS.resnet_size = 56
-    flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
-    self._fill_report_object(stats)
-
-  def keras_resnet56_no_dist_strat_1_gpu(self):
-    """Test keras based model with Keras fit but not distribution strategies."""
-    self._setup()
-    flags.FLAGS.turn_off_distribution_strategy = True
     flags.FLAGS.num_gpus = 1
     flags.FLAGS.data_dir = DATA_DIR
     flags.FLAGS.batch_size = 128
     flags.FLAGS.train_epochs = 182
-    flags.FLAGS.model_dir = self._get_model_dir(
-        'keras_resnet56_no_dist_strat_1_gpu')
+    flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_1_gpu')
+    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.dtype = 'fp16'
+    stats = cifar_main.run_cifar(flags.FLAGS)
+    self._fill_report_object(stats)
+
+  def resnet56_2_gpu(self):
+    """Test layers model with Estimator and dist_strat. 2 GPUs."""
+    self._setup()
+    flags.FLAGS.num_gpus = 1
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir('resnet56_2_gpu')
     flags.FLAGS.resnet_size = 56
     flags.FLAGS.dtype = 'fp32'
-    stats = keras_cifar_main.run(flags.FLAGS)
+    stats = cifar_main.run_cifar(flags.FLAGS)
+    self._fill_report_object(stats)
+
+  def resnet56_fp16_2_gpu(self):
+    """Test layers FP16 model with Estimator and dist_strat. 2 GPUs."""
+    self._setup()
+    flags.FLAGS.num_gpus = 2
+    flags.FLAGS.data_dir = DATA_DIR
+    flags.FLAGS.batch_size = 128
+    flags.FLAGS.train_epochs = 182
+    flags.FLAGS.model_dir = self._get_model_dir('resnet56_fp16_2_gpu')
+    flags.FLAGS.resnet_size = 56
+    flags.FLAGS.dtype = 'fp16'
+    stats = cifar_main.run_cifar(flags.FLAGS)
     self._fill_report_object(stats)
 
   def _fill_report_object(self, stats):
+    # Also "available global_step"
     if self.oss_report_object:
-      self.oss_report_object.top_1 = stats['accuracy_top_1']
-      self.oss_report_object.add_other_quality(stats['training_accuracy_top_1'],
-                                               'top_1_train_accuracy')
+      self.oss_report_object.top_1 = stats['accuracy'].item()
+      self.oss_report_object.top_5 = stats['accuracy_top_5'].item()
     else:
       raise ValueError('oss_report_object has not been set.')
 
@@ -94,14 +102,12 @@ class KerasCifar10BenchmarkTests(object):
     return os.path.join(self.output_dir, folder_name)
 
   def _setup(self):
-    """Setups up and resets flags before each test."""
     tf.logging.set_verbosity(tf.logging.DEBUG)
-    if KerasCifar10BenchmarkTests.local_flags is None:
-      keras_common.define_keras_flags()
+    if EstimatorCifar10BenchmarkTests.local_flags is None:
       cifar_main.define_cifar_flags()
       # Loads flags to get defaults to then override.
       flags.FLAGS(['foo'])
       saved_flag_values = flagsaver.save_flag_values()
-      KerasCifar10BenchmarkTests.local_flags = saved_flag_values
+      EstimatorCifar10BenchmarkTests.local_flags = saved_flag_values
       return
-    flagsaver.restore_flag_values(KerasCifar10BenchmarkTests.local_flags)
+    flagsaver.restore_flag_values(EstimatorCifar10BenchmarkTests.local_flags)
